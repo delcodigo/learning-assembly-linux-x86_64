@@ -6,11 +6,19 @@ section .text
 	global _start
 
 _start:
+	sub rsp, 16
 	mov rdi, msg
+	mov rsi, rsp
+	mov rdx, 16
+	call mem_copy
+
+	mov rdi, rax
 	call sys_print
 	mov rdi, 456
 	call sys_print_int
 	call sys_print_nl
+
+	add rsp, 16
 
 	mov rdi, 0
 	call sys_exit
@@ -76,6 +84,27 @@ str_reverse:
 	
 		mov rax, rdi
 		ret
+
+; -------------------------------------------------------------
+; mem_copy(rdi_source_pointer: void*, rsi_destination_pointer: void*, rdx_length: int)
+;
+; Copies rdx bytes from the memory region pointed to by rdi
+; (source) to the memory region pointed to by rsi (destination).
+;
+; rdi: source pointer
+; rsi: destination pointer
+; rdx: length to copy
+;
+; Returns
+; 	rax: pointer to destination memory
+; -------------------------------------------------------------
+mem_copy:
+	cld
+	mov rcx, rdx
+	mov rax, rdi
+	mov rdi, rsi
+	rep movsb
+	ret
 
 ; -------------------------------------------------------------
 ; itoa(rdi: number, rsi: string)
