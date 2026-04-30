@@ -4,6 +4,10 @@ section .data
 	msgNEq db "The strings are not equal", 0
 	str_nln db 0x0A, 0
 	strNum db "-9153", 0
+	error_reading_input db "Error reading input", 10, 0
+
+section .bss
+	buffer resb 100
 
 section .text
 	global _start
@@ -40,6 +44,13 @@ _start:
 	dec rdi
 	mov rsi, rsp
 	call itoa
+	mov rdi, rax
+	call sys_print
+	call sys_print_nl
+
+	mov rdi, buffer
+	mov rsi, 100
+	call sys_readln
 	mov rdi, rax
 	call sys_print
 	call sys_print_nl
@@ -349,6 +360,47 @@ sys_print_int:
 	call sys_print
 	add rsp, 32
 	ret
+
+; -------------------------------------------------------------
+; sys_readln(rdi: buffer, rsi: max_length)
+;
+; Reads a line from standard input into the provided buffer.
+; If the input ends with a newline ('\n'), it is removed.
+; The resulting string is always NULL-terminated.
+;
+; rdi: pointer to output buffer
+; rsi: maximum number of bytes to read
+;
+; Returns:
+;   rax: pointer to the buffer containing the read string
+;        (on success)
+; -------------------------------------------------------------
+sys_readln:
+	mov rdx, rsi
+	mov rsi, rdi
+	mov rax, 0
+	mov rdi, 0
+	syscall
+
+	test rax, rax
+	js sys_readln_error
+
+	mov r8b, byte[rsi+rax-1]
+	cmp r8b, 10
+	jnz sys_readln_not_nl
+	dec rax
+
+	sys_readln_not_nl:
+		xor rcx, rcx
+		mov byte [rsi+rax], cl
+		mov rax, rsi
+		ret
+
+	sys_readln_error:
+		mov rdi, error_reading_input
+		call sys_print
+		call sys_exit
+		ret
 
 ; -------------------------------------------------------------
 ; sys_print_nl()
