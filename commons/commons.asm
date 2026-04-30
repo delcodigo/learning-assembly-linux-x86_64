@@ -3,6 +3,7 @@ section .data
 	msgEq db "The strings are equal", 0
 	msgNEq db "The strings are not equal", 0
 	str_nln db 0x0A, 0
+	strNum db "-9153", 0
 
 section .text
 	global _start
@@ -31,6 +32,16 @@ _start:
 	call sys_print
 	mov rdi, 456
 	call sys_print_int
+	call sys_print_nl
+
+	mov rdi, strNum
+	call atoi
+	mov rdi, rax
+	dec rdi
+	mov rsi, rsp
+	call itoa
+	mov rdi, rax
+	call sys_print
 	call sys_print_nl
 
 	add rsp, 16
@@ -222,6 +233,75 @@ itoa:
 		mov byte [rsi+rcx], 45
 		add rcx, 1
 		jmp itoa_null_terminator_negative
+
+; -------------------------------------------------------------
+; atoi(rdi: string pointer)
+;
+; Converts a null-terminated string into a signed integer.
+;
+; The function accepts an optional leading '-' to indicate a
+; negative number. All other characters must be digits ('0'-'9').
+; Leading or trailing whitespace is not allowed.
+;
+; rdi: pointer to input string
+;
+; Registers used:
+;   rsi: index/counter for traversing the string
+;   r8:  accumulator for the resulting number
+;   r9:  sign multiplier (1 for positive, -1 for negative)
+;
+; Returns:
+;   rax: converted integer value
+;        (or 0 if the input is invalid)
+; -------------------------------------------------------------
+atoi:
+	push rbx
+
+	xor rsi, rsi
+	xor r8, r8
+	mov r9, 1
+
+	cmp byte [rdi+rsi], 45
+	jne atoi_loop
+	inc rsi
+	mov r9, -1
+
+	atoi_loop:
+		xor rcx, rcx
+
+		mov cl, byte [rdi+rsi]
+		
+		cmp cl, 0
+		jz atoi_return
+		
+		cmp cl, 48
+		jl atoi_not_number
+		cmp cl, 57
+		jg atoi_not_number
+
+		sub cl, 48
+
+		mov rax, r8
+		mov rbx, 10
+		mul rbx
+
+		mov r8, rax
+		add r8, rcx
+
+		inc rsi
+		jmp atoi_loop
+	
+	atoi_return:
+		mov rax, r8
+		mov rbx, r9
+		mul rbx
+		pop rbx
+		ret
+	
+	atoi_not_number:
+		xor rax, rax
+		pop rbx
+		ret
 
 
 ; -------------------------------------------------------------
