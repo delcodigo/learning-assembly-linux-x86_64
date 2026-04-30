@@ -1,5 +1,7 @@
 section .data
 	msg db "The number is: ", 0
+	msgEq db "The strings are equal", 0
+	msgNEq db "The strings are not equal", 0
 	str_nln db 0x0A, 0
 
 section .text
@@ -12,7 +14,20 @@ _start:
 	mov rdx, 16
 	call mem_copy
 
-	mov rdi, rax
+	mov rdi, msg
+	mov rsi, rax
+	call str_comp
+	cmp rax, 1
+	jnz _start_strings_not_equal
+	mov rdi, msgEq
+	jmp _start_print_strings_equality
+	_start_strings_not_equal:
+	mov rdi, msgNEq
+	_start_print_strings_equality:
+	call sys_print
+	call sys_print_nl
+
+	mov rdi, msg
 	call sys_print
 	mov rdi, 456
 	call sys_print_int
@@ -83,6 +98,47 @@ str_reverse:
 		jg str_reverse_loop
 	
 		mov rax, rdi
+		ret
+
+; -------------------------------------------------------------
+; str_comp(rdi: string, rsi: string)
+;
+; Compares two null-terminated strings byte by byte.
+; Iterates until a mismatch is found or a NULL terminator is reached.
+; 
+; rdi: stringA pointer
+; rsi: stringB pointer
+;
+; Registers
+;   rcx: index into both strings
+;   al : current byte from string A
+;   bl : current byte from string B
+;
+; Returns
+; 	rax: 1 if the strings are equal, 0 if not equals
+; -------------------------------------------------------------
+str_comp:
+	xor rcx, rcx
+
+	str_comp_loop:
+		mov al, [rdi + rcx]
+		mov bl, [rsi + rcx]
+
+		cmp al, bl
+		jnz str_comp_not_equal
+
+		cmp al, 0
+		jz str_comp_equal
+
+		inc rcx
+		jmp str_comp_loop
+
+	str_comp_equal:
+		mov rax, 1
+		ret
+	
+	str_comp_not_equal:
+		mov rax, 0
 		ret
 
 ; -------------------------------------------------------------
