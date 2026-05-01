@@ -1,63 +1,114 @@
 section .data
-	msg db "The number is: ", 0
-	msgEq db "The strings are equal", 0
-	msgNEq db "The strings are not equal", 0
+	intro_line_1 db "Welcome to this awesome assembly calculator.", 10, 0
+	intro_line_2 db "Introduce the operation you want to do.", 10, 0
+	intro_line_3 db "sum", 0
+	intro_line_4 db "sub", 0
+	intro_line_5 db "mult", 0
+	intro_line_6 db "COMMAND: ", 0
+	intro_line_7 db "Nothing", 10, 0
+	sum_line_1 db "Insert first number: ", 0
+	sum_line_2 db "Insert second number: ", 0
+	sum_line_3 db "Result: ", 0
+	sum_line_4 db " + ", 0
+	sum_line_5 db " = ", 0
 	str_nln db 10, 0
-	strNum db "-9153", 0
 	error_reading_input db "Error reading input", 10, 0
 	error_not_a_number db 0
+	error_invalid_input db "Invalid input", 10, 0
 
 section .bss
-	buffer resb 100
+	readln_buffer resb 100
 
 section .text
 	global _start
 
 _start:
-	sub rsp, 16
-	mov rdi, msg
-	mov rsi, rsp
-	mov rdx, 16
-	call mem_copy
-
-	mov rdi, msg
-	mov rsi, rax
-	call str_comp
-	cmp rax, 1
-	jnz _start_strings_not_equal
-	mov rdi, msgEq
-	jmp _start_print_strings_equality
-	_start_strings_not_equal:
-	mov rdi, msgNEq
-	_start_print_strings_equality:
+	mov rdi, intro_line_1
+	call sys_print
+	mov rdi, intro_line_2
 	call sys_print
 	call sys_print_nl
-
-	mov rdi, msg
+	mov rdi, intro_line_3
 	call sys_print
-	mov rdi, 456
+	call sys_print_nl
+	mov rdi, intro_line_4
+	call sys_print
+	call sys_print_nl
+	mov rdi, intro_line_5
+	call sys_print
+	call sys_print_nl
+	call sys_print_nl
+	mov rdi, intro_line_6
+	call sys_print
+
+	call sys_readln
+
+	mov rdi, readln_buffer
+	mov rsi, intro_line_3
+	call str_comp
+	cmp rax, 1
+	jz sum_numbers
+
+	mov rdi, intro_line_7
+	call sys_print
+
+	xor rdi, rdi
+	call sys_exit
+
+sum_numbers:
+	sub rsp, 96
+	call sys_print_nl
+
+	mov rdi, sum_line_1
+	call sys_print
+	
+	call sys_readln
+
+	mov rdi, rax
+	call atoi
+	cmp byte [error_not_a_number], 1
+	jz sum_numbers_nan
+	mov [rsp], rax
+
+	mov rdi, sum_line_2
+	call sys_print
+	
+	call sys_readln
+
+	mov rdi, rax
+	call atoi
+	cmp byte [error_not_a_number], 1
+	jz sum_numbers_nan
+	mov [rsp+32], rax
+
+	mov [rsp+64], rax
+	mov rax, [rsp]
+	add [rsp+64], rax
+
+	mov rdi, sum_line_3
+	call sys_print
+	mov rdi, [rsp]
+	call sys_print_int
+	mov rdi, sum_line_4
+	call sys_print
+	mov rdi, [rsp+32]
+	call sys_print_int
+	mov rdi, sum_line_5
+	call sys_print
+	mov rdi, [rsp+64]
 	call sys_print_int
 	call sys_print_nl
 
-	mov rdi, strNum
-	call atoi
-	mov rdi, rax
-	dec rdi
-	mov rsi, rsp
-	call itoa
-	mov rdi, rax
-	call sys_print
-	call sys_print_nl
+	jmp sum_numbers_done
 
-	call sys_readln
-	mov rdi, rax
-	call sys_print
-	call sys_print_nl
+	sum_numbers_nan:
+		mov rdi, error_invalid_input
+		call sys_print
 
-	add rsp, 16
-
-	mov rdi, 0
-	call sys_exit
+	sum_numbers_done:
+		add rsp, 96
+		xor rdi, rdi
+		call sys_exit
 
 ; -------------------------------------------------------------
 ; str_len(rdi_str_pointer: string)
@@ -163,88 +214,6 @@ str_comp:
 		ret
 
 ; -------------------------------------------------------------
-; mem_copy(rdi_source_pointer: void*, rsi_destination_pointer: void*, rdx_length: int)
-;
-; Copies rdx bytes from the memory region pointed to by rdi
-; (source) to the memory region pointed to by rsi (destination).
-;
-; rdi: source pointer
-; rsi: destination pointer
-; rdx: length to copy
-;
-; Returns
-; 	rax: pointer to destination memory
-; -------------------------------------------------------------
-mem_copy:
-	cld
-	mov rcx, rdx
-	mov rax, rdi
-	mov rdi, rsi
-	rep movsb
-	ret
-
-; -------------------------------------------------------------
-; itoa(rdi: number, rsi: string)
-;
-; Takes an integer number and returns its ASCII representation
-; it divides the number, takes the remainder and converts it to
-; ASCII, repeat until the coeficient is 0. The number is reversed
-; so the final string is reversed through str_reverse.
-;
-; assumes input != INT64_MIN
-;
-; rdi: number to convert
-; rsi: output string
-;
-; registers:
-;	rcx = string index
-;	rax = absolute value of input number
-;	r8 = we divide by 10 to obtain each digit
-; -------------------------------------------------------------
-itoa:
-	mov rcx, 0
-	mov rax, rdi
-	mov r8, 10
-
-	cmp rax, 0
-	jge itoa_not_negative
-	neg rax
-
-	itoa_not_negative:
-		cmp rax, 0
-		jz itoa_value_0
-
-	itoa_for:
-		cmp rax, 0
-		jz itoa_null_terminator
-		xor rdx, rdx
-		div r8
-		add dl, 48
-		mov byte [rsi+rcx], dl
-		add rcx, 1
-		jmp itoa_for
-
-	itoa_value_0:
-		mov byte [rsi+rcx], 48
-		add rcx, 1
-
-	itoa_null_terminator:
-		cmp rdi, 0
-		jl itoa_negative
-	itoa_null_terminator_negative:
-		mov byte [rsi+rcx], 0
-		mov rdi, rsi
-		mov rsi, rcx
-		call str_reverse
-		mov rax, rdi
-		ret
-	
-	itoa_negative:
-		mov byte [rsi+rcx], 45
-		add rcx, 1
-		jmp itoa_null_terminator_negative
-
-; -------------------------------------------------------------
 ; atoi(rdi: string pointer)
 ;
 ; Converts a null-terminated string into a signed integer.
@@ -317,18 +286,66 @@ atoi:
 		pop rbx
 		ret
 
-
 ; -------------------------------------------------------------
-; exit(rdi: number)
+; itoa(rdi: number, rsi: string)
 ;
-; Terminates the program with the status code passed
-; 
-; rdi: exit status code
+; Takes an integer number and returns its ASCII representation
+; it divides the number, takes the remainder and converts it to
+; ASCII, repeat until the coeficient is 0. The number is reversed
+; so the final string is reversed through str_reverse.
+;
+; assumes input != INT64_MIN
+;
+; rdi: number to convert
+; rsi: output string
+;
+; registers:
+;	rcx = string index
+;	rax = absolute value of input number
+;	r8 = we divide by 10 to obtain each digit
 ; -------------------------------------------------------------
-sys_exit:
-	mov rax, 60
-	syscall
-	ret
+itoa:
+	mov rcx, 0
+	mov rax, rdi
+	mov r8, 10
+
+	cmp rax, 0
+	jge itoa_not_negative
+	neg rax
+
+	itoa_not_negative:
+		cmp rax, 0
+		jz itoa_value_0
+
+	itoa_for:
+		cmp rax, 0
+		jz itoa_null_terminator
+		xor rdx, rdx
+		div r8
+		add dl, 48
+		mov byte [rsi+rcx], dl
+		add rcx, 1
+		jmp itoa_for
+
+	itoa_value_0:
+		mov byte [rsi+rcx], 48
+		add rcx, 1
+
+	itoa_null_terminator:
+		cmp rdi, 0
+		jl itoa_negative
+	itoa_null_terminator_negative:
+		mov byte [rsi+rcx], 0
+		mov rdi, rsi
+		mov rsi, rcx
+		call str_reverse
+		mov rax, rdi
+		ret
+	
+	itoa_negative:
+		mov byte [rsi+rcx], 45
+		add rcx, 1
+		jmp itoa_null_terminator_negative
 
 ; -------------------------------------------------------------
 ; sys_print(rdi: string)
@@ -362,6 +379,28 @@ sys_print_int:
 	mov rdi, rax
 	call sys_print
 	add rsp, 32
+	ret
+
+; -------------------------------------------------------------
+; sys_print_nl()
+;
+; Prints a new line '\n' character to the console
+; -------------------------------------------------------------
+sys_print_nl:
+	mov rdi, str_nln
+	call sys_print
+	ret
+
+; -------------------------------------------------------------
+; exit(rdi: number)
+;
+; Terminates the program with the status code passed
+; 
+; rdi: exit status code
+; -------------------------------------------------------------
+sys_exit:
+	mov rax, 60
+	syscall
 	ret
 
 ; -------------------------------------------------------------
@@ -401,13 +440,3 @@ sys_readln:
 		call sys_print
 		call sys_exit
 		ret
-
-; -------------------------------------------------------------
-; sys_print_nl()
-;
-; Prints a new line '\n' character to the console
-; -------------------------------------------------------------
-sys_print_nl:
-	mov rdi, str_nln
-	call sys_print
-	ret
