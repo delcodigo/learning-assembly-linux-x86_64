@@ -2,7 +2,7 @@ section .data
 	msg db "The number is: ", 0
 	msgEq db "The strings are equal", 0
 	msgNEq db "The strings are not equal", 0
-	str_nln db 10, 0
+	str_nl db 10, 0
 	strNum db "-9153", 0
 	error_reading_input db "Error reading input", 10, 0
 	error_not_a_number db 0
@@ -99,23 +99,26 @@ str_len:
 ; rdi: pointer to string
 ; rsi: length of string
 ;
-; registers:
+; Registers:
 ;   rcx = left index (starts at 0)
-;   rdx = right index (starts at length - 1)
+;   rsi = right index (starts at length - 1)
+;	al  = left byte to move to the right
+;   dl  = right byte to move to the left
+;
+; Returns:
+; 	rax = same pointer to the string as rdi
 ; -------------------------------------------------------------
 str_reverse:
 	mov rcx, 0
-	mov rdx, rsi
 		
 	str_reverse_loop:
-		sub rdx, 1
-		mov r10b, [rdi+rcx]
-		mov r9b, r10b
-		mov r10b, [rdi+rdx]
-		mov byte [rdi+rcx], r10b
-		mov byte [rdi+rdx], r9b
+		sub rsi, 1
+		mov dl, [rdi+rcx]
+		mov al, [rdi+rsi]
+		mov byte [rdi+rcx], al
+		mov byte [rdi+rsi], dl
 		add rcx, 1
-		cmp rdx, rcx
+		cmp rsi, rcx
 		jg str_reverse_loop
 	
 		mov rax, rdi
@@ -221,12 +224,12 @@ itoa:
 		div r8
 		add dl, 48
 		mov byte [rsi+rcx], dl
-		add rcx, 1
+		inc rcx
 		jmp itoa_for
 
 	itoa_value_0:
 		mov byte [rsi+rcx], 48
-		add rcx, 1
+		inc rcx
 
 	itoa_null_terminator:
 		cmp rdi, 0
@@ -259,62 +262,52 @@ itoa:
 ;
 ; Registers used:
 ;   rsi: index/counter for traversing the string
-;   r8:  accumulator for the resulting number
-;   r9:  sign multiplier (1 for positive, -1 for negative)
+;   rdx: accumulator for the resulting number
+;   rcx: sign multiplier (1 for positive, -1 for negative)
 ;
 ; Returns:
 ;   rax: converted integer value
 ;        (or 0 if the input is invalid)
 ; -------------------------------------------------------------
 atoi:
-	push rbx
-
 	xor rsi, rsi
-	xor r8, r8
-	mov r9, 1
+	xor rax, rax
 	mov byte [error_not_a_number], 0
 
-	cmp byte [rdi+rsi], 45
+	mov rcx, 1
+	cmp byte [rdi], 45
 	jne atoi_loop
+	mov rcx, -1
 	inc rsi
-	mov r9, -1
 
 	atoi_loop:
-		xor rcx, rcx
+		xor dl, dl
 
-		mov cl, byte [rdi+rsi]
+		mov dl, byte [rdi+rsi]
 		
-		cmp cl, 0
-		jz atoi_return
+		cmp dl, 0
+		jz atoi_done
 		
-		cmp cl, 48
+		cmp dl, 48
 		jl atoi_not_number
-		cmp cl, 57
+		cmp dl, 57
 		jg atoi_not_number
 
-		sub cl, 48
+		sub dl, 48
 
-		mov rax, r8
-		mov rbx, 10
-		mul rbx
-
-		mov r8, rax
-		add r8, rcx
+		imul rax, rax, 10
+		add rax, rdx
 
 		inc rsi
 		jmp atoi_loop
 	
-	atoi_return:
-		mov rax, r8
-		mov rbx, r9
-		mul rbx
-		pop rbx
+	atoi_done:
+		imul rax, rcx
 		ret
 	
 	atoi_not_number:
 		mov byte [error_not_a_number], 1
 		xor rax, rax
-		pop rbx
 		ret
 
 
@@ -356,12 +349,12 @@ sys_print:
 ; rdi: number to print
 ; -------------------------------------------------------------
 sys_print_int:
-	sub rsp, 32
+	sub rsp, 16
 	mov rsi, rsp
 	call itoa
 	mov rdi, rax
 	call sys_print
-	add rsp, 32
+	add rsp, 16
 	ret
 
 ; -------------------------------------------------------------
@@ -385,8 +378,8 @@ sys_readln:
 	test rax, rax
 	js sys_readln_error
 
-	mov r8b, byte[rsi+rax-1]
-	cmp r8b, 10
+	mov cl, byte[rsi+rax-1]
+	cmp cl, 10
 	jnz sys_readln_not_nl
 	dec rax
 
@@ -408,6 +401,9 @@ sys_readln:
 ; Prints a new line '\n' character to the console
 ; -------------------------------------------------------------
 sys_print_nl:
-	mov rdi, str_nln
-	call sys_print
+	mov rax, 1
+	mov rdi, 1
+	mov rsi, str_nl
+	mov rdx, 1
+	syscall
 	ret
