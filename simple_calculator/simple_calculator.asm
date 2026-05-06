@@ -6,11 +6,12 @@ section .data
 	intro_line_5 db "mult", 0
 	intro_line_6 db "COMMAND: ", 0
 	intro_line_7 db "Nothing", 10, 0
-	sum_line_1 db "Insert first number: ", 0
-	sum_line_2 db "Insert second number: ", 0
-	sum_line_3 db "Result: ", 0
-	sum_line_4 db " + ", 0
-	sum_line_5 db " = ", 0
+	op_line_1 db "Insert first number: ", 0
+	op_line_2 db "Insert second number: ", 0
+	op_line_3 db "Result: ", 0
+	op_line_4 db " + ", 0
+	op_line_5 db " = ", 0
+	op_line_6 db " - ", 0
 	str_nl db 10, 0
 	error_reading_input db "Error reading input", 10, 0
 	error_not_a_number db 0
@@ -49,6 +50,12 @@ _start:
 	cmp rax, 1
 	jz sum_numbers
 
+	mov rdi, readln_buffer
+	mov rsi, intro_line_4
+	call str_comp
+	cmp rax, 1
+	jz sub_sumbers
+
 	mov rdi, intro_line_7
 	call sys_print
 
@@ -58,7 +65,7 @@ _start:
 sum_numbers:
 	call sys_print_nl
 
-	mov rdi, sum_line_1
+	mov rdi, op_line_1
 	call sys_print
 	
 	call sys_readln
@@ -69,7 +76,7 @@ sum_numbers:
 	jz sum_numbers_nan
 	mov r9, rax
 
-	mov rdi, sum_line_2
+	mov rdi, op_line_2
 	call sys_print
 	
 	call sys_readln
@@ -80,11 +87,11 @@ sum_numbers:
 	jz sum_numbers_nan
 	mov r10, rax
 	
-	mov rdi, sum_line_3
+	mov rdi, op_line_3
 	call sys_print
 	mov rdi, r9
 	call sys_print_int
-	mov rdi, sum_line_4
+	mov rdi, op_line_4
 	call sys_print
 	mov rdi, r10
 	call sys_print_int
@@ -92,7 +99,7 @@ sum_numbers:
 	mov rax, r9
 	add r10, rax
 	
-	mov rdi, sum_line_5
+	mov rdi, op_line_5
 	call sys_print
 	mov rdi, r10
 	call sys_print_int
@@ -105,6 +112,52 @@ sum_numbers:
 		call sys_print
 
 	sum_numbers_done:
+		xor rdi, rdi
+		call sys_exit
+
+sub_sumbers:
+	call sys_print_nl
+
+	mov rdi, op_line_1
+	call sys_print
+	call sys_readln
+	mov rdi, rax
+	call atoi
+	cmp byte [error_invalid_input], 1
+	jz sub_numbers_nan
+	mov r9, rax
+
+	mov rdi, op_line_2
+	call sys_print
+	call sys_readln
+	mov rdi, rax
+	call atoi
+	cmp byte [error_invalid_input], 1
+	jz sub_numbers_nan
+	mov r10, rax
+
+	mov rdi, op_line_3
+	call sys_print
+	mov rdi, r9
+	call sys_print_int
+	mov rdi, op_line_6
+	call sys_print
+	mov rdi, r10
+	call sys_print_int
+	mov rdi, op_line_5
+	call sys_print
+	sub r9, r10
+	mov rdi, r9
+	call sys_print_int
+	call sys_print_nl
+
+	jmp sub_numbers_done
+
+	sub_numbers_nan:
+		mov rdi, error_invalid_input
+		call sys_print
+	
+	sub_numbers_done:
 		xor rdi, rdi
 		call sys_exit
 
