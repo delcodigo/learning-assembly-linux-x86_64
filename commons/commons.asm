@@ -8,7 +8,7 @@ section .data
 	error_not_a_number db 0
 
 section .bss
-	buffer resb 100
+	readln_buffer resb 100
 
 section .text
 	global _start
