@@ -2,13 +2,16 @@ section .data
 	txt_intro db "Enter the numbers of disks [3-15]: ", 0
 	txt_clear_line times 92 db ' '
 	char_nl db 10, 0
+	txt_input_info db "Enter your move as 'A TO B': ", 0
 	error_invalid_input db "Invalid input", 10, 0
 	error_reading_input db "Error reading input", 10, 0
+	error_invalid_move db "Invalid move", 10, 0
 	error_not_a_number db 0
 
 section .bss
 	readln_buffer resb 100
 	disk_towers resb 45
+	disk_towers_back resb 45
 	disk_towers_line resb 94
 
 section .text
@@ -53,13 +56,13 @@ hanoi_print_towers:
 
 		mov r12b, byte [disk_towers+rbx]
 
+		xor rdx, rdx
 		mov r10, r9
 		cmp r12, 0
 		jz hanoi_print_towers_empty_disk
 
 		sub r10b, r12b
 		xor rcx, rcx
-		xor rdx, rdx
 
 	hanoi_print_towers_disk:
 		mov word [disk_towers_line+r10], 0x202A
@@ -109,7 +112,94 @@ hanoi_print_towers:
 		jmp hanoi_print_towers_line
 
 	hanoi_print_towers_done:
+		call handle_player_movement
 		ret
+
+handle_player_movement:
+	mov rdi, txt_input_info
+	call sys_print
+	call sys_readln
+
+	mov rdi, disk_towers_back
+	mov rsi, disk_towers
+	mov rcx, 45
+	rep movsb
+
+	mov bh, byte [rax]
+	mov ch, byte [rax+5]
+
+	cmp bh, 65
+	jl handle_player_movement_invalid_input
+	cmp bh, 67
+	jg handle_player_movement_invalid_input
+
+	cmp ch, 65
+	jl handle_player_movement_invalid_input
+	cmp ch, 67
+	jg handle_player_movement_invalid_input
+
+	sub bh, 65
+	sub ch, 65
+
+	xor rdx, rdx
+	add dl, bh
+	imul rdx, 15
+
+	handle_player_movement_find_disk_1:
+		cmp byte [disk_towers+rdx], 0
+		jg handle_player_movement_found_disk_1
+		inc rdx
+		jmp handle_player_movement_find_disk_1
+
+	handle_player_movement_found_disk_1:
+		mov sil, byte [disk_towers+rdx]
+		mov byte [disk_towers+rdx], 0
+
+		xor rdx, rdx
+		add dl, ch
+		imul rdx, 15
+		add rdx, r9
+		dec rdx
+		mov r11, rdx
+
+	handle_player_movement_find_disk_2:
+		cmp byte [disk_towers+rdx], 0
+		je handle_player_movement_verify_valid_disk_2
+		dec rdx
+		jmp handle_player_movement_find_disk_2
+
+	handle_player_movement_verify_valid_disk_2:
+		cmp rdx, r11
+		jz handle_player_movement_found_disk_2
+		mov r10, rdx
+		inc r10
+		mov r12b, byte [disk_towers+r10]
+		cmp byte sil, r12b
+		jl handle_player_movement_found_disk_2
+		jmp handle_player_movement_invalid_move
+
+	handle_player_movement_found_disk_2:
+		mov byte [disk_towers+rdx], sil
+		call hanoi_print_towers
+		ret
+
+	handle_player_movement_invalid_move:
+		mov rdi, disk_towers
+		mov rsi, disk_towers_back
+		mov rcx, 45
+		rep movsb
+
+		mov rdi, error_invalid_move
+		call sys_print
+		call hanoi_print_towers
+		ret
+
+	handle_player_movement_invalid_input:
+		mov rdi, error_invalid_input
+		call sys_print
+		jmp handle_player_movement
+
+	ret
 
 ; -------------------------------------------------------------
 ; str_len(rdi_str_pointer: string)
