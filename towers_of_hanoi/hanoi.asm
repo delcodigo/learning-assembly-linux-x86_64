@@ -171,6 +171,8 @@ handle_player_movement:
 		cmp byte [disk_towers+rdx], 0
 		jg handle_player_movement_found_disk_1
 		inc rdx
+		cmp rdx, r9
+		jz handle_player_movement_invalid_move
 		jmp handle_player_movement_find_disk_1
 
 	handle_player_movement_found_disk_1:
