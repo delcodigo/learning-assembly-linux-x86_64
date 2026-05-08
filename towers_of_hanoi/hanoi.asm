@@ -1,11 +1,13 @@
 section .data
 	txt_intro db "Enter the numbers of disks [3-15]: ", 0
+	txt_input_info db "Enter your move as 'A TO B': ", 0
+	txt_input_victory db "VICTORY!", 10, 0
 	txt_clear_line times 92 db ' '
 	char_nl db 10, 0
-	txt_input_info db "Enter your move as 'A TO B': ", 0
 	error_invalid_input db "Invalid input", 10, 0
 	error_reading_input db "Error reading input", 10, 0
 	error_invalid_move db "Invalid move", 10, 0
+	error_invalid_range db "Disks must be between [3-15]: ", 0
 	error_not_a_number db 0
 
 section .bss
@@ -21,6 +23,7 @@ _start:
 	mov rdi, txt_intro
 	call sys_print
 	
+	hanoi_read_input:
 	call sys_readln
 	mov rdi, rax
 	call atoi
@@ -28,6 +31,11 @@ _start:
 	jz hanoi_invalid_input
 
 	mov r9, rax
+	cmp r9, 3
+	jl hanoi_invalid_range
+	cmp r9, 15
+	jg hanoi_invalid_range
+
 	xor rbx, rbx
 	hanoi_initialize_loop:
 		mov byte [disk_towers+rbx], bl
@@ -44,6 +52,11 @@ _start:
 		mov rdi, error_invalid_input
 		call sys_print
 		call sys_exit
+	
+	hanoi_invalid_range:
+		mov rdi, error_invalid_range
+		call sys_print
+		jmp hanoi_read_input
 
 hanoi_print_towers:
 	xor rbx, rbx
@@ -112,7 +125,7 @@ hanoi_print_towers:
 		jmp hanoi_print_towers_line
 
 	hanoi_print_towers_done:
-		call handle_player_movement
+		call check_for_victory
 		ret
 
 handle_player_movement:
@@ -200,6 +213,16 @@ handle_player_movement:
 		jmp handle_player_movement
 
 	ret
+
+check_for_victory:
+	cmp byte [disk_towers+30], 1
+	jz check_for_victory_finished
+	call handle_player_movement
+	ret
+	check_for_victory_finished:
+		mov rdi, txt_input_victory
+		call sys_print
+		call sys_exit
 
 ; -------------------------------------------------------------
 ; str_len(rdi_str_pointer: string)
