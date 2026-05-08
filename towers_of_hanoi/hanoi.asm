@@ -138,24 +138,33 @@ handle_player_movement:
 	mov rcx, 45
 	rep movsb
 
-	mov bh, byte [rax]
-	mov ch, byte [rax+5]
+	mov bl, byte [rax]
+	mov cl, byte [rax+5]
 
-	cmp bh, 65
+	xor rdi, rdi
+	mov dil, bl
+	call char_to_upper
+	mov bl, al
+	
+	mov dil, cl
+	call char_to_upper
+	mov cl, al
+
+	cmp bl, 65
 	jl handle_player_movement_invalid_input
-	cmp bh, 67
+	cmp bl, 67
 	jg handle_player_movement_invalid_input
 
-	cmp ch, 65
+	cmp cl, 65
 	jl handle_player_movement_invalid_input
-	cmp ch, 67
+	cmp cl, 67
 	jg handle_player_movement_invalid_input
 
-	sub bh, 65
-	sub ch, 65
+	sub bl, 65
+	sub cl, 65
 
 	xor rdx, rdx
-	add dl, bh
+	add dl, bl
 	imul rdx, 15
 
 	handle_player_movement_find_disk_1:
@@ -169,7 +178,7 @@ handle_player_movement:
 		mov byte [disk_towers+rdx], 0
 
 		xor rdx, rdx
-		add dl, ch
+		add dl, cl
 		imul rdx, 15
 		add rdx, r9
 		dec rdx
@@ -224,6 +233,15 @@ check_for_victory:
 		call sys_print
 		call sys_exit
 
+char_to_upper:
+	mov rax, rdi
+	cmp rdi, 97
+	jl char_to_upper_done
+	cmp rdi, 122
+	jg char_to_upper_done
+	sub rax, 32
+	char_to_upper_done:
+		ret
 ; -------------------------------------------------------------
 ; str_len(rdi_str_pointer: string)
 ;
